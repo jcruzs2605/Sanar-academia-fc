@@ -1,4 +1,5 @@
 import os
+import re
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -18,10 +19,17 @@ from utils import ValidationError, error_desde_excepcion, respuesta_error
 def _url_base_de_datos():
     """Lee DATABASE_URL del entorno (Postgres en producción). Sin ella usa SQLite local."""
     url = os.environ.get('DATABASE_URL', '').strip()
+    # Tolera valores copiados de Neon como "psql 'postgresql://...'" o con comillas/espacios
+    coincidencia = re.search(r"postgres(?:ql)?://[^\s'\"]+", url)
+    if coincidencia:
+        url = coincidencia.group(0)
     if url:
         # Algunos proveedores entregan 'postgres://', SQLAlchemy exige 'postgresql://'
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
+        # SQLAlchemy 2.1 usa 'psycopg' (v3) por defecto; aquí se instala psycopg2, así que se indica explícito
+        if url.startswith('postgresql://'):
+            url = url.replace('postgresql://', 'postgresql+psycopg2://', 1)
         return url
     if os.environ.get('VERCEL'):
         # Respaldo para que la app no se caiga en Vercel: el disco es temporal, los datos NO persisten.
