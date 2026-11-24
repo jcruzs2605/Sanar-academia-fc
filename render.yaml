@@ -1,6 +1,6 @@
 # Blueprint de Render para el FRONTEND (Angular) como sitio estático.
-# Antes de desplegar, reemplaza sanar-academia-api.vercel.app (ya configurado) por el dominio que te dé Vercel
-# (ej.: https://sanar-academia-api.vercel.app).
+# El backend ya está desplegado en https://sanar-academia-api.vercel.app (las llamadas /api/* se reenvían allá).
+# Si cambias el dominio de Vercel, actualiza la regla de abajo.
 services:
   - type: web
     name: sanar-academia-front
