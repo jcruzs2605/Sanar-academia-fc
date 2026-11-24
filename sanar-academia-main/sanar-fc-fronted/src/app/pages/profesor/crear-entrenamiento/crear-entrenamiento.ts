@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { mensajeError } from '../../../interceptors/error.interceptor';
+import { camposVacios } from '../../../utils/validaciones';
 
 @Component({
   selector: 'app-crear-entrenamiento',
@@ -56,11 +58,15 @@ export class CrearEntrenamientoComponent implements OnInit {
   }
 
   guardarEntrenamiento(): void {
-    if (!this.nuevoEntrenamiento.categoria_id) {
-      this.errorMsj = 'Debes seleccionar una categoría.';
+    const faltantes = camposVacios(this.nuevoEntrenamiento, {
+      categoria_id: 'Categoría', fecha: 'Fecha y hora', lugar: 'Lugar', actividades: 'Actividades'
+    });
+    if (faltantes.length) {
+      this.errorMsj = `Faltan campos por completar: ${faltantes.join(', ')}.`;
       return;
     }
 
+    this.errorMsj = '';
     this.guardando = true;
 
     // También enviamos withCredentials aquí para guardar correctamente
@@ -71,7 +77,7 @@ export class CrearEntrenamientoComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error al guardar:', err);
-        this.errorMsj = 'Error al guardar el entrenamiento.';
+        this.errorMsj = mensajeError(err, 'No se pudo guardar el entrenamiento.');
         this.guardando = false;
       }
     });

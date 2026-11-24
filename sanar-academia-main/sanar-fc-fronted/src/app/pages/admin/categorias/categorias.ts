@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { mensajeError } from '../../../interceptors/error.interceptor';
 
 interface Categoria { id: number; nombre: string; profesor_id: number | null; profesor: string | null; jugadores: number; }
 
@@ -43,7 +44,7 @@ export class CategoriasComponent {
           ? { ...c, profesor_id: prof?.id ?? null, profesor: prof?.nombre_completo ?? null } : c));
         this.mensaje.set(`Entrenador de «${cat.nombre}» actualizado.`);
       },
-      error: () => this.error.set('No se pudo asignar el entrenador.')
+      error: (err) => this.error.set(mensajeError(err, 'No se pudo asignar el entrenador.'))
     });
   }
 
@@ -51,7 +52,7 @@ export class CategoriasComponent {
     if (!confirm(`¿Eliminar la categoría «${cat.nombre}»? Sus jugadores quedarán sin categoría.`)) return;
     this.http.delete(`/api/admin/categorias/${cat.id}`).subscribe({
       next: () => this.categorias.update(l => l.filter(c => c.id !== cat.id)),
-      error: () => this.error.set('No se pudo eliminar la categoría.')
+      error: (err) => this.error.set(mensajeError(err, 'No se pudo eliminar la categoría.'))
     });
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { mensajeError } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-detalle-jugador',
@@ -106,7 +107,7 @@ export class DetalleJugadorComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al guardar observación:', err);
-          this.mensajeError = 'Error al guardar la observación.';
+          this.mensajeError = mensajeError(err, 'No se pudo guardar la observación.');
           this.cdr.detectChanges();
         }
       });

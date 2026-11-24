@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { mensajeError } from '../../../interceptors/error.interceptor';
+import { camposFaltantesJugador } from '../../../utils/validaciones';
 
 @Component({
   selector: 'app-editar-jugador',
@@ -74,7 +76,8 @@ export class EditarJugadorComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al cargar jugador:', err);
-          this.mensajeError = 'No se pudo cargar la información del jugador.';
+          this.mensajeError = mensajeError(err, 'No se pudo cargar la información del jugador.');
+          this.cdr.detectChanges();
         }
       });
   }
@@ -82,6 +85,12 @@ export class EditarJugadorComponent implements OnInit {
   onSubmit(): void {
     this.mensajeExito = '';
     this.mensajeError = '';
+
+    const faltantes = camposFaltantesJugador(this.jugador);
+    if (faltantes.length) {
+      this.mensajeError = `Faltan campos por completar: ${faltantes.join(', ')}.`;
+      return;
+    }
 
     this.http.put(`/api/admin/jugadores/editar/${this.jugadorId}`, this.jugador)
       .subscribe({
@@ -91,7 +100,8 @@ export class EditarJugadorComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al actualizar jugador:', err);
-          this.mensajeError = 'No se pudo guardar la información.';
+          this.mensajeError = mensajeError(err, 'No se pudo guardar la información del jugador.');
+          this.cdr.detectChanges();
         }
       });
   }

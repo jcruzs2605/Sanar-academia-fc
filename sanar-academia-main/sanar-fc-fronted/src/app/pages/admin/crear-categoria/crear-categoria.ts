@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { mensajeError } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-crear-categoria',
@@ -48,7 +49,8 @@ export class CrearCategoriaComponent implements OnInit {
     this.mensajeError = '';
 
     if (!this.categoria.nombre || !this.categoria.profesor_id) {
-      this.mensajeError = 'Por favor completa todos los campos requeridos.';
+      const faltan = [!this.categoria.nombre?.trim() ? 'Nombre de la categoría' : '', !this.categoria.profesor_id ? 'Entrenador asignado' : ''].filter(Boolean);
+      this.mensajeError = `Faltan campos por completar: ${faltan.join(', ')}.`;
       return;
     }
 
@@ -61,7 +63,7 @@ export class CrearCategoriaComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al crear categoría:', err);
-          this.mensajeError = 'No se pudo crear la categoría';
+          this.mensajeError = mensajeError(err, 'No se pudo crear la categoría.');
           this.cdr.markForCheck();
         }
       });

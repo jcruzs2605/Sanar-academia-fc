@@ -12,6 +12,27 @@ from models.models import (
     Asistencia 
 )
 
+from utils import (
+    ValidationError, exigir_campos, texto, a_entero, a_numero, a_fecha_hora,
+    error_desde_excepcion
+)
+
+RENDIMIENTOS = ('Excelente', 'Bueno', 'Regular', 'Bajo', 'Necesita mejorar')
+
+
+def validar_evento(data, etiqueta_tipo):
+    """Valida los datos comunes de partidos y entrenamientos (todo obligatorio)."""
+    exigir_campos(data, {'fecha': 'Fecha y hora', 'lugar': 'Lugar', 'categoria_id': 'Categoría'})
+    fecha = a_fecha_hora(data.get('fecha'), 'Fecha y hora')
+    lugar = texto(data, 'lugar')
+    if len(lugar) < 3:
+        raise ValidationError('El lugar debe tener al menos 3 caracteres.')
+    categoria_id = a_entero(data.get('categoria_id'), 'Categoría')
+    if not Categoria.query.get(categoria_id):
+        raise ValidationError('La categoría seleccionada no existe.')
+    return fecha, lugar, categoria_id
+
+
 profesor_bp = Blueprint(
     'profesor',
     __name__,
@@ -127,23 +148,29 @@ def agregar_observacion(id):
     if request.method == 'OPTIONS':
         return '', 200
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
+        if not Jugador.query.get(id):
+            raise ValidationError('El jugador no existe.', 404)
+        exigir_campos(data, {
+            'rendimiento': 'Rendimiento',
+            'fortalezas': 'Fortalezas',
+            'aspectos_mejorar': 'Aspectos por mejorar',
+            'comentario': 'Comentario'
+        })
         nueva_obs = Observacion(
-            comentario=data.get('comentario'),
-            fortalezas=data.get('fortalezas'),
-            aspectos_mejorar=data.get('aspectos_mejorar'),
-            rendimiento=data.get('rendimiento'),
+            comentario=texto(data, 'comentario'),
+            fortalezas=texto(data, 'fortalezas'),
+            aspectos_mejorar=texto(data, 'aspectos_mejorar'),
+            rendimiento=texto(data, 'rendimiento'),
             jugador_id=id,
-            profesor_id=data.get('profesor_id')
+            profesor_id=session.get('user_id') or data.get('profesor_id')
         )
         db.session.add(nueva_obs)
         db.session.commit()
         return jsonify({'mensaje': 'Observación guardada exitosamente'}), 201
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al guardar observación: {e}")
-        return jsonify({'error': str(e)}), 400
+        return error_desde_excepcion(e, db, 'guardar la observación')
 
 
 # =========================
@@ -191,46 +218,43 @@ def crear_partido():
     if request.method == 'OPTIONS':
         return '', 200
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
-        fecha_str = data.get('fecha')
-        fecha_dt = datetime.now()
-        if fecha_str:
-            try:
-                fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%dT%H:%M:%S')
+        exigir_campos(data, {'rival': 'Equipo rival'})
+        fecha_dt, lugar, categoria_id = validar_evento(data, 'partido')
+        rival = texto(data, 'rival')
+        if len(rival) < 2:
+            raise ValidationError('El nombre del rival debe tener al menos 2 caracteres.')
 
-        evento = Evento(
-            tipo='partido',
-            fecha_hora=fecha_dt,
-            lugar=data.get('lugar'),
-            categoria_id=data.get('categoria_id')
-        )
+        jugadores_ids = data.get('convocados') or data.get('jugadores') or []
+        if not jugadores_ids:
+            raise ValidationError('Debes convocar al menos un jugador para el partido.', 400, ['convocados'])
+        jugadores = []
+        for j_id in jugadores_ids:
+            jugador = Jugador.query.get(a_entero(j_id, 'Jugador convocado'))
+            if not jugador:
+                raise ValidationError('Uno de los jugadores convocados no existe.')
+            if jugador.categoria_id != categoria_id:
+                raise ValidationError(f'El jugador {jugador.nombre} no pertenece a la categoría seleccionada.')
+            jugadores.append(jugador)
+
+        # Todo se guarda en una sola transacción: si algo falla no queda un evento a medias
+        evento = Evento(tipo='partido', fecha_hora=fecha_dt, lugar=lugar, categoria_id=categoria_id)
         db.session.add(evento)
-        db.session.commit()
+        db.session.flush()
 
         nuevo_partido = Partido(
             evento_id=evento.id,
-            rival=data.get('rival'),
-            resultado=data.get('resultado') if data.get('resultado') else 'Pendiente'
+            rival=rival,
+            resultado=texto(data, 'resultado') or 'Pendiente'
         )
+        nuevo_partido.jugadores.extend(jugadores)
         db.session.add(nuevo_partido)
-        db.session.commit()
-
-        jugadores_ids = data.get('convocados') or data.get('jugadores') or []
-        for j_id in jugadores_ids:
-            jugador = Jugador.query.get(j_id)
-            if jugador:
-                nuevo_partido.jugadores.append(jugador)
-
         db.session.commit()
         return jsonify({'mensaje': 'Partido creado exitosamente', 'id': nuevo_partido.id}), 201
 
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al crear partido: {e}")
-        return jsonify({'error': str(e)}), 400
+        return error_desde_excepcion(e, db, 'crear el partido')
 
 
 @profesor_bp.route('/partido/<int:id>', methods=['GET', 'OPTIONS'])
@@ -287,10 +311,22 @@ def guardar_estadisticas_partido(id):
     if request.method == 'OPTIONS':
         return '', 200
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     jugador_id = data.get('jugador_id')
 
     try:
+        if not jugador_id:
+            raise ValidationError('Falta indicar el jugador de las estadísticas.', 400, ['jugador_id'])
+        if not Partido.query.get(id):
+            raise ValidationError('El partido no existe.', 404)
+        if not Jugador.query.get(jugador_id):
+            raise ValidationError('El jugador no existe.', 404)
+        for campo, etiqueta in (('goles', 'Goles'), ('asistencias', 'Asistencias'), ('amarillas', 'Tarjetas amarillas'),
+                                ('rojas', 'Tarjetas rojas'), ('pases', 'Pases')):
+            valor = data.get(campo, 0)
+            a_numero(0 if valor in (None, '') else valor, etiqueta, minimo=0)
+            data[campo] = 0 if valor in (None, '') else int(float(valor))
+
         stat = EstadisticaJugador.query.filter_by(
             jugador_id=jugador_id,
             partido_id=id
@@ -325,9 +361,7 @@ def guardar_estadisticas_partido(id):
         return jsonify({'mensaje': 'Estadísticas actualizadas'}), 200
 
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al guardar estadísticas: {e}")
-        return jsonify({'error': str(e)}), 400
+        return error_desde_excepcion(e, db, 'guardar las estadísticas')
 
 
 # =========================
@@ -364,22 +398,17 @@ def crear_entrenamiento():
     if request.method == 'OPTIONS':
         return '', 200
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
-        fecha_str = data.get('fecha')
-        fecha_dt = datetime.now()
-        if fecha_str:
-            try:
-                fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%dT%H:%M:%S')
+        exigir_campos(data, {'actividades': 'Actividades del entrenamiento'})
+        fecha_dt, lugar, categoria_id = validar_evento(data, 'entrenamiento')
 
         entrenamiento = Evento(
             tipo='entrenamiento',
             fecha_hora=fecha_dt,
-            lugar=data.get('lugar'),
-            actividades=data.get('actividades'),
-            categoria_id=data.get('categoria_id')
+            lugar=lugar,
+            actividades=texto(data, 'actividades'),
+            categoria_id=categoria_id
         )
 
         db.session.add(entrenamiento)
@@ -387,9 +416,7 @@ def crear_entrenamiento():
         return jsonify({'mensaje': 'Entrenamiento creado exitosamente'}), 201
 
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al crear entrenamiento: {e}")
-        return jsonify({'error': str(e)}), 400
+        return error_desde_excepcion(e, db, 'crear el entrenamiento')
 
 
 @profesor_bp.route('/entrenamiento-detalle/<int:id>', methods=['GET', 'OPTIONS'])
@@ -461,17 +488,25 @@ def guardar_asistencia():
         return '', 200
 
     try:
-        data = request.get_json() or {}
-        
+        data = request.get_json(silent=True) or {}
+
         entrenamiento_id = data.get('entrenamiento_id')
         jugador_id = data.get('jugador_id')
         estado = data.get('estado', 'asistio')
         profesor_id = session.get('user_id')
 
+        if not entrenamiento_id:
+            raise ValidationError('Falta indicar el entrenamiento.', 400)
         if not jugador_id:
-            return jsonify({'error': 'Falta jugador_id'}), 400
+            raise ValidationError('Falta indicar el jugador.', 400)
+        if estado not in ('asistio', 'no_asistio', 'excusado'):
+            raise ValidationError('El estado de asistencia no es válido.', 400)
+        if not Jugador.query.get(jugador_id):
+            raise ValidationError('El jugador no existe.', 404)
 
-        evento = Evento.query.get(entrenamiento_id) if entrenamiento_id else None
+        evento = Evento.query.get(entrenamiento_id)
+        if not evento:
+            raise ValidationError('El entrenamiento no existe.', 404)
         fecha_evento = evento.fecha_hora if evento and evento.fecha_hora else datetime.utcnow()
 
         asistencia = Asistencia.query.filter_by(
@@ -500,9 +535,7 @@ def guardar_asistencia():
         return jsonify({'mensaje': 'Asistencia guardada correctamente'}), 200
 
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al guardar asistencia: {e}")
-        return jsonify({'error': str(e)}), 500
+        return error_desde_excepcion(e, db, 'guardar la asistencia')
 
 @profesor_bp.route('/categorias', methods=['GET', 'OPTIONS'])
 def obtener_categorias_profesor():

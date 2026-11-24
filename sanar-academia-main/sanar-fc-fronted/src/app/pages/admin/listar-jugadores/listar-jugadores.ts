@@ -46,7 +46,7 @@ export class ListarJugadoresComponent implements OnInit {
           },
           error: (err) => {
             console.error('Error al eliminar jugador:', err);
-            this.mensajeError = 'Error al intentar eliminar el jugador.';
+            this.mensajeError = err.error?.error || 'No se pudo eliminar el jugador.';
           }
         });
     }

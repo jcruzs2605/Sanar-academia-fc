@@ -59,9 +59,9 @@ export class PagosGeneralComponent {
     const anterior = pago.estado;
     this.pagos.update(l => l.map(p => p.id === pago.id ? { ...p, estado } : p));
     this.http.put(`/api/admin/pagos/${pago.id}/estado`, { estado }).subscribe({
-      error: () => {
+      error: (err) => {
         this.pagos.update(l => l.map(p => p.id === pago.id ? { ...p, estado: anterior } : p));
-        this.mensajeError.set('No se pudo actualizar el estado.');
+        this.mensajeError.set(err.error?.error || 'No se pudo actualizar el estado.');
       }
     });
   }

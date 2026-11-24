@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { mensajeError } from '../../../interceptors/error.interceptor';
+import { camposVacios } from '../../../utils/validaciones';
 
 @Component({
   selector: 'app-crear-partido',
@@ -97,8 +99,12 @@ export class CrearPartidoComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (!this.partido.rival || !this.partido.categoria_id) {
-      this.mensajeError = 'Por favor completa el nombre del rival y selecciona una categoría.';
+    const faltantes = camposVacios(this.partido, {
+      rival: 'Equipo rival', categoria_id: 'Categoría', fecha: 'Fecha y hora', lugar: 'Lugar',
+      convocados: 'Jugadores convocados (al menos uno)'
+    });
+    if (faltantes.length) {
+      this.mensajeError = `Faltan campos por completar: ${faltantes.join(', ')}.`;
       return;
     }
 
@@ -118,7 +124,7 @@ export class CrearPartidoComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al crear el partido:', err);
-          this.mensajeError = 'Ocurrió un error al intentar registrar el partido.';
+          this.mensajeError = mensajeError(err, 'No se pudo registrar el partido.');
           this.guardando = false;
           this.cdr.detectChanges();
         }

@@ -62,7 +62,7 @@ export class PagoDetalleComponent {
   cambiarEstado(pago: any, estado: string): void {
     this.http.put(`/api/admin/pagos/${pago.id}/estado`, { estado }).subscribe({
       next: () => this.historial.update(l => l.map(p => p.id === pago.id ? { ...p, estado } : p)),
-      error: () => this.mensajeError.set('No se pudo actualizar el estado.')
+      error: (err) => this.mensajeError.set(err.error?.error || 'No se pudo actualizar el estado.')
     });
   }
 }

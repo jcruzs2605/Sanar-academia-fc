@@ -3,6 +3,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { mensajeError } from '../../../interceptors/error.interceptor';
+import { camposVacios } from '../../../utils/validaciones';
 
 @Component({
   selector: 'app-editar-usuario',
@@ -59,6 +61,12 @@ export class EditarUsuarioComponent implements OnInit {
     this.mensajeExito = '';
     this.mensajeError = '';
 
+    const faltantes = camposVacios(this.usuario, { nombre: 'Nombre completo', username: 'Nombre de usuario', rol: 'Rol' });
+    if (faltantes.length) {
+      this.mensajeError = `Faltan campos por completar: ${faltantes.join(', ')}.`;
+      return;
+    }
+
     this.http.put(`/api/admin/usuarios/editar/${this.userId}`, this.usuario)
       .subscribe({
         next: () => {
@@ -67,7 +75,8 @@ export class EditarUsuarioComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al actualizar:', err);
-          this.mensajeError = 'Error al actualizar el usuario.';
+          this.mensajeError = mensajeError(err, 'No se pudo actualizar el usuario.');
+          this.cdr.detectChanges();
         }
       });
   }

@@ -1,4 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../interceptors/error.interceptor';
+import { camposFaltantesJugador } from '../../../utils/validaciones';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -14,6 +16,7 @@ import { HttpClient } from '@angular/common/http';
 export class CrearJugadorComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   isEditing: boolean = false;
   mensajeExito: string = '';
@@ -54,15 +57,23 @@ export class CrearJugadorComponent implements OnInit {
     this.mensajeExito = '';
     this.mensajeError = '';
 
+    const faltantes = camposFaltantesJugador(this.jugador);
+    if (faltantes.length) {
+      this.mensajeError = `Faltan campos por completar: ${faltantes.join(', ')}.`;
+      return;
+    }
+
     this.http.post('/api/admin/jugadores/nuevo', this.jugador)
       .subscribe({
         next: () => {
           this.mensajeExito = 'Jugador registrado exitosamente';
+          this.cdr.detectChanges();
           setTimeout(() => this.router.navigate(['/admin/jugadores']), 1500);
         },
         error: (err) => {
           console.error('Error al crear jugador:', err);
-          this.mensajeError = err.error?.error || 'No se pudo registrar el jugador';
+          this.mensajeError = mensajeError(err, 'No se pudo registrar el jugador.');
+          this.cdr.detectChanges();
         }
       });
   }

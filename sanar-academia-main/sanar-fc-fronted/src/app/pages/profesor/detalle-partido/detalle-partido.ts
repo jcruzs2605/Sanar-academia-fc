@@ -99,10 +99,10 @@ export class DetallePartidoComponent implements OnInit {
         this.jugadoresStats.set([...this.jugadoresStats()]);
         alert('Estadísticas guardadas con éxito');
       },
-      error: () => {
+      error: (err) => {
         jugador.guardando = false;
         this.jugadoresStats.set([...this.jugadoresStats()]);
-        alert('Error al guardar las estadísticas');
+        alert(`No se pudieron guardar las estadísticas: ${err.error?.error || 'intenta de nuevo.'}`);
       }
     });
   }
