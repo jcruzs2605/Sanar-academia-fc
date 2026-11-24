@@ -1,4 +1,4 @@
-﻿# Guía de despliegue — Sanar Academia FC
+# Guía de despliegue — Sanar Academia FC
 
 Arquitectura: **Base de datos (Postgres)** ← **Backend Flask en Vercel** ← **Frontend Angular en Render**.
 El frontend reenvía todo lo que empieza por `/api/` al backend (regla de reescritura en `render.yaml`),
@@ -27,7 +27,7 @@ así el navegador usa un solo dominio y la sesión por cookie funciona sin confi
    `{"mensaje":"API de Flask funcionando correctamente"}`. Las tablas se crean solas al primer arranque.
 
 ## 3. Frontend en Render
-1. Edita `render.yaml` y reemplaza `REEMPLAZAR-BACKEND` por el dominio de Vercel del paso anterior. Sube el cambio.
+1. `render.yaml` ya apunta al backend `https://sanar-academia-api.vercel.app`. Si cambias el dominio de Vercel, actualízalo ahí y sube el cambio.
 2. En Render: **New > Blueprint** y elige el repo (lee `render.yaml`).
    *Alternativa manual:* **New > Static Site**, Root Directory `sanar-academia-main/sanar-fc-fronted`,
    Build Command `npm ci && npm run build && cp dist/sanar-fc-fronted/browser/index.csr.html dist/sanar-fc-fronted/browser/index.html`,

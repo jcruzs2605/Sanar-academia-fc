@@ -1,5 +1,5 @@
 # Blueprint de Render para el FRONTEND (Angular) como sitio estático.
-# Antes de desplegar, reemplaza REEMPLAZAR-BACKEND por el dominio que te dé Vercel
+# Antes de desplegar, reemplaza sanar-academia-api.vercel.app (ya configurado) por el dominio que te dé Vercel
 # (ej.: https://sanar-academia-api.vercel.app).
 services:
   - type: web
@@ -17,7 +17,7 @@ services:
       #    y la sesión por cookie funciona sin configurar CORS).
       - type: rewrite
         source: /api/*
-        destination: https://REEMPLAZAR-BACKEND.vercel.app/api/*
+        destination: https://sanar-academia-api.vercel.app/api/*
       # 2) Cualquier otra ruta devuelve la app de Angular (rutas del lado del cliente)
       - type: rewrite
         source: /*
