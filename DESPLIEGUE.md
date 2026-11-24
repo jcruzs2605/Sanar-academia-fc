@@ -1,4 +1,4 @@
-# Guía de despliegue — Sanar Academia FC
+﻿# Guía de despliegue — Sanar Academia FC
 
 Arquitectura: **Base de datos (Postgres)** ← **Backend Flask en Vercel** ← **Frontend Angular en Render**.
 El frontend reenvía todo lo que empieza por `/api/` al backend (regla de reescritura en `render.yaml`),
@@ -23,7 +23,7 @@ así el navegador usa un solo dominio y la sesión por cookie funciona sin confi
 | `ADMIN_PASSWORD` | contraseña del usuario `admin` inicial (se crea solo la primera vez) |
 | `COOKIE_SECURE` | `1` |
 
-4. **Deploy.** Al terminar, abre `https://TU-BACKEND.vercel.app/api/ping`: debe responder
+4. **Deploy.** No hace falta `vercel.json`: Vercel detecta Flask y manda todas las rutas a la app. Al terminar, abre `https://TU-BACKEND.vercel.app/api/ping`: debe responder
    `{"mensaje":"API de Flask funcionando correctamente"}`. Las tablas se crean solas al primer arranque.
 
 ## 3. Frontend en Render
@@ -41,3 +41,4 @@ así el navegador usa un solo dominio y la sesión por cookie funciona sin confi
 - **Los datos desaparecen**: `DATABASE_URL` no está definida y el backend usó SQLite temporal.
 - **Sesión que no se mantiene**: verifica `COOKIE_SECURE=1` y que entres por el dominio de Render (no el de Vercel).
 - **Desarrollo local**: sin variables de entorno todo funciona como antes (`python run.py` + `ng serve`).
+
