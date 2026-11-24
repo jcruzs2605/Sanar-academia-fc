@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session
-from app import db
+from models.models import db
 from datetime import datetime
 from models.models import (
     Usuario,

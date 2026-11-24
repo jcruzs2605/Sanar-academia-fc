@@ -1,0 +1,24 @@
+# Blueprint de Render para el FRONTEND (Angular) como sitio estático.
+# Antes de desplegar, reemplaza REEMPLAZAR-BACKEND por el dominio que te dé Vercel
+# (ej.: https://sanar-academia-api.vercel.app).
+services:
+  - type: web
+    name: sanar-academia-front
+    runtime: static
+    rootDir: sanar-academia-main/sanar-fc-fronted
+    # ng build genera index.csr.html; se copia como index.html para el sitio estático
+    buildCommand: npm ci && npm run build && cp dist/sanar-fc-fronted/browser/index.csr.html dist/sanar-fc-fronted/browser/index.html
+    staticPublishPath: dist/sanar-fc-fronted/browser
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.2
+    routes:
+      # 1) Las llamadas /api/* se reenvían al backend de Vercel (así el navegador ve un solo dominio
+      #    y la sesión por cookie funciona sin configurar CORS).
+      - type: rewrite
+        source: /api/*
+        destination: https://REEMPLAZAR-BACKEND.vercel.app/api/*
+      # 2) Cualquier otra ruta devuelve la app de Angular (rutas del lado del cliente)
+      - type: rewrite
+        source: /*
+        destination: /index.html
